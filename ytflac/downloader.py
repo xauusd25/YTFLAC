@@ -27,10 +27,6 @@ def _base_ydl_opts(output_dir):
         "no_warnings": False,
         "noplaylist": False,
         "writethumbnail": True,
-        "writesubtitles": True,
-        "writeautomaticsub": True,
-        "subtitleslangs": ["en", "en-US", "en-orig"],
-        "subtitlesformat": "srv3/best",
         "postprocessors": [
             # Extract the best audio stream and transcode to FLAC.
             {

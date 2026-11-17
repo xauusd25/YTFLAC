@@ -2,8 +2,7 @@ import os
 
 from mutagen.flac import FLAC, Picture
 
-# FLAC stores tag data as Vorbis comments. Lyrics conventionally live in a
-# "LYRICS" comment field (many players also honor "UNSYNCEDLYRICS").
+# FLAC stores tag data as Vorbis comments.
 
 # Tag names (vorbis comments are ASCII-case-insensitive on read).
 TITLE = "title"
@@ -16,7 +15,6 @@ GENRE = "genre"
 TRACK_NUMBER = "tracknumber"
 DISCNUMBER = "discnumber"
 COMPOSER = "composer"
-LYRICS = "lyrics"
 LYRICIST = "lyricist"
 COMMENT = "comment"
 
@@ -32,13 +30,12 @@ def _norm(value):
     return vals if vals else None
 
 
-def apply_metadata(file_path, info, lyrics=None):
+def apply_metadata(file_path, info):
     """
-    Apply metadata (title/artist/album/etc.), embed cover art, and attach
-    lyrics to a FLAC file.
+    Apply metadata (title/artist/album/etc.) and embed cover art into a FLAC
+    file.
 
-    `info` is the yt-dlp info dict. `lyrics`, when provided, is attached to
-    the LYRICS field. Returns True on success.
+    `info` is the yt-dlp info dict. Returns True on success.
     """
     if not os.path.exists(file_path) or not file_path.lower().endswith(".flac"):
         raise FileNotFoundError(f"Expected a FLAC file, got: {file_path}")
@@ -87,10 +84,6 @@ def apply_metadata(file_path, info, lyrics=None):
             # Non-fatal: skip cover art if it cannot be fetched.
             pass
 
-    # --- Lyrics embedding ---
-    if lyrics:
-        audio[LYRICS] = [lyrics]
-
     audio.save()
     return True
 
@@ -115,12 +108,3 @@ def _attach_thumbnail(audio, picture, thumb_url):
         picture.mime = "application/octet-stream"
 
     audio.add_picture(picture)
-
-
-def read_lyrics(file_path):
-    """Return the embedded lyrics of a FLAC file, or None."""
-    audio = FLAC(file_path)
-    for key in (LYRICS, "unsyncedlyrics"):
-        if key in audio and audio[key]:
-            return "\n".join(audio[key])
-    return None
