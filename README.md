@@ -1,5 +1,9 @@
 # 🎵 YTFLAC
 
+<p align="center">
+  <img src="thumbnail.png" alt="YTFLAC" width="640">
+</p>
+
 **YTFLAC** is a high-quality command-line audio downloader for **YouTube** and **YouTube Music**. It grabs the highest-fidelity audio stream available, transcodes it into a **FLAC Lossless** container, and embeds the thumbnail, metadata, and (when available) lyrics directly into the file.
 
 <p align="center">
@@ -15,28 +19,45 @@
 - 🏷️ **Rich Metadata** — title, artist, album, year, genre, track number, composer, and more.
 - 📝 **Lyrics** — auto-captions/subtitles converted to embedded `LYRICS` tags when present.
 - 📂 **Playlists & Albums** — pass a playlist/album URL to grab everything.
-- 💻 **Clean CLI** — beautiful output powered by `Rich`.
+- 🖥️ **Big Banner CLI** — a large ASCII-art logo, beautiful output powered by `Rich`.
 - 🌐 **Cross-Platform** — macOS, Linux, Windows, and Android/Termux.
 
 ---
 
-## 🖥️ Supported Platforms
+## 📥 Installation
 
-| Platform | Install method | Command |
-|----------|---------------|---------|
-| **macOS / Linux** | `curl` script | `curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh \| bash` |
-| **Windows (PowerShell)** | `irm` script | `irm https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.ps1 \| iex` |
-| **Android (Termux)** | `curl` script | `curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh \| bash` |
-| **Any (source)** | `pip install .` | `git clone https://github.com/xauusd25/YTFLAC.git && cd YTFLAC && pip install .` |
+Installers pull the latest **release archive (source zip)** from GitHub and install YTFLAC as a standalone tool via `uv` (with its own Python 3.12 and a bundled FFmpeg via `imageio-ffmpeg` — no admin rights needed).
 
----
+### macOS / Linux
 
-## 📦 Requirements
+```bash
+curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh | bash
+```
 
-- **Python 3.8+**
-- **FFmpeg** — required for audio transcoding and thumbnail embedding.
+### Windows (PowerShell)
 
-The install scripts detect and install FFmpeg automatically where possible.
+```powershell
+irm https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.ps1 | iex
+```
+
+### Android (Termux)
+
+```bash
+termux-setup-storage
+curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh | bash
+```
+
+### Uninstall
+
+```bash
+# macOS / Linux / Termux
+YTF_ACTION=uninstall bash -c "$(curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh)"
+```
+
+```powershell
+# Windows
+$env:YTF_ACTION = 'uninstall'; irm https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.ps1 | iex
+```
 
 ---
 
@@ -44,25 +65,27 @@ The install scripts detect and install FFmpeg automatically where possible.
 
 ```bash
 # Download a single song
-ytflac download https://youtube.com/watch?v=VIDEO_ID
+ytf download https://youtube.com/watch?v=VIDEO_ID
 
 # YouTube Music
-ytflac download https://music.youtube.com/watch?v=VIDEO_ID
+ytf download https://music.youtube.com/watch?v=VIDEO_ID
 
 # Download a whole playlist / album
-ytflac download https://youtube.com/playlist?list=PLAYLIST_ID
+ytf download https://youtube.com/playlist?list=PLAYLIST_ID
 
 # Specify an output folder
-ytflac download -o ~/Music https://youtube.com/watch?v=VIDEO_ID
+ytf download -o ~/Music https://youtube.com/watch?v=VIDEO_ID
 
 # Download several items at once
-ytflac download URL1 URL2 URL3
+ytf download URL1 URL2 URL3
 
 # Show version
-ytflac version
+ytf version
 ```
 
 All files are written as `Title.flac` with embedded cover art, metadata, and lyrics.
+
+> `ytflac` also works as a command; `ytf` is the short form (like `gig`).
 
 ---
 
@@ -74,10 +97,10 @@ YTFLAC/
 │   ├── __init__.py    # version & developer info
 │   ├── downloader.py  # yt-dlp download + FLAC post-processing
 │   ├── metadata.py    # mutagen tag/art/lyric embedding
-│   └── cli.py         # argparse command-line interface
+│   └── cli.py         # command-line interface + big banner
 ├── install.sh         # macOS / Linux / Termux installer
 ├── install.ps1        # Windows installer
-├── pyproject.toml     # PEP 517/518 packaging
+├── pyproject.toml     # PEP 517 packaging + entry points
 ├── LICENSE            # MIT License
 ├── thumbnail.png      # repo banner
 └── README.md
