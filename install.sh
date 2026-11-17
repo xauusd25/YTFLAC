@@ -30,11 +30,13 @@ CHK=$'\xe2\x9c\x94'; CROSS=$'\xe2\x9c\x98'; PLAY=$'\xe2\x96\xb6'; DOT=$'\xe2\x80
 
 banner() {
     echo
-    printf '%s\n' "${LAV}    ____ ___ _____ ___   ___   ___"
-    printf '%s\n' "${LAV}   /  _//   |  _  \_ _| / _ \ / _ \"
-    printf '%s\n' "${LAV}   | | | | | | |_) ) | | | | || | | |"
-    printf '%s\n' "${LAV}   | | | |_| |  _ <| | | |_| | |_| |"
-    printf '%s\n' "${LAV}   \___\___/|_| \_\___\ \___/ \___/${N}"
+    cat <<'YTFLAC_LOGO'
+   ____ ___ _____ ___   ___   ___
+  /  _//   |  _  \_ _| / _ \ / _ \
+  | | | | | | |_) ) | | | | || | | |
+  | | | |_| |  _ <| | | |_| | |_| |
+  \___\___/|_| \_\___\ \___/ \___/
+YTFLAC_LOGO
     echo "              ${TEAL}FLAC Downloader Installer${N}"
     echo
 }
