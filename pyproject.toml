@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ytflac"
+version = "0.1.0"
+description = "High-quality YouTube / YouTube Music audio downloader that extracts FLAC Lossless audio with embedded thumbnails, metadata, and lyrics."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+    { name = "XAU_USD_25" }
+]
+keywords = ["youtube", "yt-dlp", "flac", "lossless", "audio", "downloader", "music"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+]
+
+dependencies = [
+    "yt-dlp",
+    "mutagen",
+    "rich",
+    "requests",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "build"]
+
+[project.scripts]
+ytflac = "ytflac.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ytflac*"]
