@@ -95,6 +95,31 @@ def cmd_download(args):
     console.print("\n[bold green]All requested items processed.[/bold green]")
 
 
+def cmd_check(_args):
+    """Verify required runtime dependencies are present."""
+    import shutil
+
+    checks = []
+    ffmpeg = shutil.which("ffmpeg")
+    checks.append(("ffmpeg", ffmpeg, "required for audio transcode + thumbnail"))
+
+    for mod in ("yt_dlp", "mutagen", "rich"):
+        try:
+            __import__(mod)
+            checks.append((mod, True, "python package"))
+        except ImportError:
+            checks.append((mod, False, "python package"))
+
+    all_ok = True
+    for name, present, why in checks:
+        if present:
+            console.print(f"  [green]✔ {name}[/green]  {why}")
+        else:
+            console.print(f"  [red]✗ {name}[/red]  missing ({why})")
+            all_ok = False
+    return 0 if all_ok else 1
+
+
 def main():
     print_banner()
 
@@ -111,6 +136,10 @@ def main():
 
     subparsers.add_parser("version", help="Show version").set_defaults(
         func=lambda _: console.print(f"YTFLAC {__version__} by {DEV}")
+    )
+
+    subparsers.add_parser("check", help="Check required dependencies").set_defaults(
+        func=cmd_check
     )
 
     args = parser.parse_args()
