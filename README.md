@@ -63,29 +63,46 @@ $env:YTF_ACTION = 'uninstall'; irm https://raw.githubusercontent.com/xauusd25/YT
 
 ## 🚀 Usage
 
+Just run `ytf` — it prompts you to paste a link, downloads the song to FLAC, then asks for the next one.
+
 ```bash
-# Download a single song
-ytf download https://youtube.com/watch?v=VIDEO_ID
-
-# YouTube Music
-ytf download https://music.youtube.com/watch?v=VIDEO_ID
-
-# Download a whole playlist / album
-ytf download https://youtube.com/playlist?list=PLAYLIST_ID
-
-# Specify an output folder
-ytf download -o ~/Music https://youtube.com/watch?v=VIDEO_ID
-
-# Download several items at once
-ytf download URL1 URL2 URL3
-
-# Show version
-ytf version
+ytf
 ```
 
-All files are written as `Title.flac` with embedded cover art, metadata, and lyrics.
+```
+   _  __ ___   __  ____  _______ ____
+  | |/ //   | / / / / / / / ___// __ \
+  |   // /| |/ / / / / / /\__ \/ / / /
+ /   |/ ___ / /_/ / /_/ /___/ / /_/ /
+/_/|_/_/  |_\____/\____//____/_____/
 
-> `ytflac` also works as a command; `ytf` is the short form (like `gig`).
+╭─────────────────────────────────────────╮
+│ YTFLAC v1.0.0 · DEV: XAU_USD_25         │
+│ YouTube & YouTube Music → FLAC Lossless │
+╰─────────────────────────────────────────╯
+Downloads go to: /home/you/Downloads/YTFLAC
+Paste a link (Ctrl+C to exit) >
+```
+
+- Paste a **YouTube / YouTube Music** link (song or playlist) and press **Enter**.
+- After the download finishes, it prompts again for the next link.
+- **Ctrl+C** exits the tool.
+
+### Other options
+
+```bash
+# All files land in ~/Downloads/YTFLAC (per-platform Downloads folder).
+# Override the output folder:
+ytf -o ~/Music
+
+# Check required dependencies:
+ytf --check
+
+# Show version:
+ytf --version
+```
+
+Files are saved as `Title.flac` with embedded cover art and metadata. `ytflac` also works as a command; `ytf` is the short form (like `gig`).
 
 ---
 
@@ -96,8 +113,9 @@ YTFLAC/
 ├── ytflac/            # Python package
 │   ├── __init__.py    # version & developer info
 │   ├── downloader.py  # yt-dlp download + FLAC post-processing
-│   ├── metadata.py    # mutagen tag/art/lyric embedding
-│   └── cli.py         # command-line interface + big banner
+│   ├── metadata.py    # mutagen tag/artwork embedding
+│   ├── paths.py       # per-platform Downloads/YTFLAC folder
+│   └── cli.py         # interactive loop + big banner
 ├── install.sh         # macOS / Linux / Termux installer
 ├── install.ps1        # Windows installer
 ├── pyproject.toml     # PEP 517 packaging + entry points
