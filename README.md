@@ -17,9 +17,7 @@
 - 🎧 **FLAC Lossless Output** — best audio source transcoded to `.flac` (lossless container, compression level 8).
 - 🖼️ **Embedded Artwork** — high-res thumbnail merged into every file.
 - 🏷️ **Rich Metadata** — title, artist, album, year, genre, track number, composer, and more.
-- 📝 **Lyrics** — auto-captions/subtitles converted to embedded `LYRICS` tags when present.
 - 📂 **Playlists & Albums** — pass a playlist/album URL to grab everything.
-- 🖥️ **Big Banner CLI** — a large ASCII-art logo, beautiful output powered by `Rich`.
 - 🌐 **Cross-Platform** — macOS, Linux, Windows, and Android/Termux.
 
 ---
