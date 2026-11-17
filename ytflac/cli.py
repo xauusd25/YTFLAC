@@ -10,12 +10,21 @@ from .metadata import apply_metadata
 
 console = Console()
 
+# Big ASCII-art logo, rendered like GigDownloader's big banner.
+LOGO = r"""
+   ____ ___ _____ ___   ___   ___
+  /  _//   |  _  \_ _| / _ \ / _ \
+  | | | | | | |_) ) | | | |_|| | | |
+  | | | |_| |  _ <| | |  _|| |_| |
+  \___\___/|_| \_\___\ \___/ \___/
+"""
+
 
 def print_banner():
+    console.print(f"[bold cyan]{LOGO}[/bold cyan]")
     console.print(
         Panel(
-            f"[bold cyan]YTFLAC v{__version__}[/bold cyan]\n"
-            f"Developer: [bold magenta]{DEV}[/bold magenta]\n"
+            f"[bold cyan]YTFLAC v{__version__}[/bold cyan] · [bold magenta]DEV: {DEV}[/bold magenta]\n"
             "YouTube & YouTube Music → FLAC Lossless",
             expand=False,
         )
@@ -90,7 +99,7 @@ def main():
     print_banner()
 
     parser = argparse.ArgumentParser(
-        prog="ytflac",
+        prog="ytf",
         description="Download songs from YouTube & YouTube Music in FLAC Lossless.",
     )
     subparsers = parser.add_subparsers(dest="command")
