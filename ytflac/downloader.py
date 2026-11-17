@@ -3,8 +3,12 @@ import re
 import shutil
 
 import yt_dlp
-import yt_dlp.postprocessor as ytdlp_pp
 from yt_dlp.postprocessor.common import PostProcessor
+from yt_dlp.postprocessor import (
+    FFmpegExtractAudioPP,
+    EmbedThumbnailPP,
+    FFmpegMetadataPP,
+)
 from PIL import Image
 
 # yt-dlp doesn't stream native FLAC from YouTube; the source streams are
@@ -62,12 +66,15 @@ class CropThumbnailPP(PostProcessor):
         cropped.save(path)
 
 
-# Make the custom postprocessor discoverable by its "key" string, the same
-# way yt-dlp resolves its own built-in postprocessors.
-ytdlp_pp.CropThumbnailPP = CropThumbnailPP
-
-
 def _base_ydl_opts(output_dir):
+    # NOTE: postprocessors are NOT listed via the "postprocessors" opts key
+    # here. That key resolves "key" strings through yt-dlp's internal
+    # plugin registry, which only recognizes yt-dlp's own built-in
+    # postprocessor names (CropThumbnail is ours, so it can't be resolved
+    # that way). Instead, download() below builds the YoutubeDL instance
+    # from this dict (with no postprocessors) and then wires up every
+    # postprocessor manually, in the exact order needed, via the public
+    # `add_post_processor()` method.
     return {
         "format": "bestaudio/best",
         "outtmpl": os.path.join(output_dir, "%(title)s.%(ext)s"),
@@ -75,27 +82,6 @@ def _base_ydl_opts(output_dir):
         "no_warnings": False,
         "noplaylist": False,
         "writethumbnail": True,
-        "postprocessors": [
-            # Extract the best audio stream and transcode to FLAC.
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "flac",
-                "preferredquality": "0",
-            },
-            # Crop thumbnail to 1:1 BEFORE it gets embedded.
-            {
-                "key": "CropThumbnail",
-            },
-            # Attach the (now-square) thumbnail into the file itself.
-            {
-                "key": "EmbedThumbnail",
-            },
-            # Copy over all standard metadata fields from the extractor.
-            {
-                "key": "FFmpegMetadata",
-                "add_metadata": True,
-            },
-        ],
         "ffmpeg_location": shutil.which("ffmpeg") or "ffmpeg",
         "postprocessor_args": {
             "FFmpegExtractAudio": ["-c:a", "flac", "-compression_level", "8"],
@@ -134,6 +120,19 @@ def download(url, output_dir="."):
         opts["noplaylist"] = True
 
     with yt_dlp.YoutubeDL(opts) as ydl:
+        # Wire up postprocessors manually, in order, using yt-dlp's public
+        # add_post_processor() API (rather than the opts-based "key"
+        # string registry, which can't resolve our custom CropThumbnailPP).
+        ydl.add_post_processor(
+            FFmpegExtractAudioPP(ydl, preferredcodec="flac", preferredquality="0"),
+            when="post_process",
+        )
+        ydl.add_post_processor(CropThumbnailPP(ydl), when="post_process")
+        ydl.add_post_processor(EmbedThumbnailPP(ydl), when="post_process")
+        ydl.add_post_processor(
+            FFmpegMetadataPP(ydl, add_metadata=True), when="post_process"
+        )
+
         try:
             info = ydl.extract_info(url, download=True)
         except Exception as exc:  # yt-dlp raises DownloadError subclasses
