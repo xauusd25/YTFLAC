@@ -173,7 +173,7 @@
     $AppWork = {
         param($Zip)
         $ErrorActionPreference = 'Continue'
-        & uv tool install --force --reinstall --python 3.12 --with 'yt-dlp[default]' --with imageio-ffmpeg "ytflac @ $Zip" 2>&1 | ForEach-Object { "$_" }
+        & uv tool install --force --reinstall --python 3.12 --with 'yt-dlp[default]' --with imageio-ffmpeg --with pillow "ytflac @ $Zip" 2>&1 | ForEach-Object { "$_" }
         if ($LASTEXITCODE -ne 0) { throw "uv tool install failed (exit code $LASTEXITCODE)" }
     }
 

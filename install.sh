@@ -84,6 +84,7 @@ uv tool install --force --reinstall \
     --python 3.12 \
     --with 'yt-dlp[default]' \
     --with imageio-ffmpeg \
+    --with pillow \
     "ytflac @ $AppZip"
 
 # Add uv bin dir to PATH if missing

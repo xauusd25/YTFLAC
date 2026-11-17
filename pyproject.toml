@@ -24,6 +24,7 @@ dependencies = [
     "yt-dlp[default]",
     "mutagen",
     "rich",
+    "Pillow",
 ]
 
 [project.optional-dependencies]
