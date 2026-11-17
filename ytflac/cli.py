@@ -79,7 +79,7 @@ def cmd_check(_args):
     ffmpeg = shutil.which("ffmpeg")
     checks.append(("ffmpeg", ffmpeg, "required for audio transcode + thumbnail"))
 
-    for mod in ("yt_dlp", "mutagen", "rich"):
+    for mod in ("yt_dlp", "mutagen", "rich", "PIL"):
         try:
             __import__(mod)
             checks.append((mod, True, "python package"))

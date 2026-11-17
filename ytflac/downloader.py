@@ -3,6 +3,9 @@ import re
 import shutil
 
 import yt_dlp
+import yt_dlp.postprocessor as ytdlp_pp
+from yt_dlp.postprocessor.common import PostProcessor
+from PIL import Image
 
 # yt-dlp doesn't stream native FLAC from YouTube; the source streams are
 # Opus/M4A. To deliver "FLAC Lossless" output, we grab the highest-fidelity
@@ -17,6 +20,51 @@ YT_HOST = ("youtube.com", "youtu.be")
 
 class DownloadError(Exception):
     """Raised when a download fails for a recoverable reason."""
+
+
+class CropThumbnailPP(PostProcessor):
+    """Crops the downloaded thumbnail to a centered 1:1 square in place,
+    before EmbedThumbnail picks it up."""
+
+    def run(self, info):
+        thumbnails = info.get("thumbnails") or []
+        candidates = []
+        if info.get("thumbnail_filepath"):
+            candidates.append(info["thumbnail_filepath"])
+        for t in thumbnails:
+            fp = t.get("filepath")
+            if fp:
+                candidates.append(fp)
+
+        seen = set()
+        for path in candidates:
+            if not path or path in seen or not os.path.exists(path):
+                continue
+            seen.add(path)
+            try:
+                self._crop_square(path)
+                self.to_screen(f"Cropped thumbnail to 1:1: {os.path.basename(path)}")
+            except Exception as exc:
+                self.report_warning(f"Could not crop thumbnail {path}: {exc}")
+
+        return [], info
+
+    @staticmethod
+    def _crop_square(path):
+        img = Image.open(path)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        w, h = img.size
+        side = min(w, h)
+        left = (w - side) // 2
+        top = (h - side) // 2
+        cropped = img.crop((left, top, left + side, top + side))
+        cropped.save(path)
+
+
+# Make the custom postprocessor discoverable by its "key" string, the same
+# way yt-dlp resolves its own built-in postprocessors.
+ytdlp_pp.CropThumbnailPP = CropThumbnailPP
 
 
 def _base_ydl_opts(output_dir):
@@ -34,7 +82,11 @@ def _base_ydl_opts(output_dir):
                 "preferredcodec": "flac",
                 "preferredquality": "0",
             },
-            # Attach the downloaded thumbnail into the file itself.
+            # Crop thumbnail to 1:1 BEFORE it gets embedded.
+            {
+                "key": "CropThumbnail",
+            },
+            # Attach the (now-square) thumbnail into the file itself.
             {
                 "key": "EmbedThumbnail",
             },

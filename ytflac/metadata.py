@@ -1,6 +1,8 @@
+import io
 import os
 
 from mutagen.flac import FLAC, Picture
+from PIL import Image
 
 # FLAC stores tag data as Vorbis comments.
 
@@ -88,8 +90,27 @@ def apply_metadata(file_path, info):
     return True
 
 
+def _crop_square_bytes(data):
+    """Crop raw image bytes to a centered 1:1 square, return new bytes + mime."""
+    img = Image.open(io.BytesIO(data))
+    img.load()
+
+    if img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
+
+    w, h = img.size
+    side = min(w, h)
+    left = (w - side) // 2
+    top = (h - side) // 2
+    cropped = img.crop((left, top, left + side, top + side))
+
+    buf = io.BytesIO()
+    cropped.save(buf, format="JPEG", quality=95)
+    return buf.getvalue(), "image/jpeg"
+
+
 def _attach_thumbnail(audio, picture, thumb_url):
-    """Download a thumbnail URL into a mutagen Picture and attach it."""
+    """Download a thumbnail URL, crop it to 1:1, and attach it as a mutagen Picture."""
     import urllib.request
 
     if thumb_url.startswith("http"):
@@ -99,12 +120,9 @@ def _attach_thumbnail(audio, picture, thumb_url):
         with open(thumb_url, "rb") as fh:
             data = fh.read()
 
-    picture.data = data
-    if data[:3] == b"\xff\xd8\xff":
-        picture.mime = "image/jpeg"
-    elif data[:8] == b"\x89PNG\r\n\x1a\n":
-        picture.mime = "image/png"
-    else:
-        picture.mime = "application/octet-stream"
+    cropped_data, mime = _crop_square_bytes(data)
+
+    picture.data = cropped_data
+    picture.mime = mime
 
     audio.add_picture(picture)
