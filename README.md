@@ -41,6 +41,7 @@ irm https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.ps1 | iex
 ### Android (Termux)
 
 ```bash
+pkg update && yes | pkg upgrade
 termux-setup-storage
 curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install-termux.sh | bash
 ```
