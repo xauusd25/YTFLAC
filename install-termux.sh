@@ -91,25 +91,22 @@ quiet_run pkg update -y || warn "pkg update had warnings (continuing)"
 quiet_run pkg install -y \
     python \
     python-pip \
+    python-pillow \
     ffmpeg \
     git \
-    clang \
-    make \
-    pkg-config \
-    libjpeg-turbo \
-    libpng \
-    libwebp \
-    zlib \
     libffi \
     openssl \
     || fail "pkg install failed"
 ok "System dependencies ready"
 # python / python-pip  -> interpreter + pip itself
+# python-pillow        -> prebuilt Termux package; pulling this via pkg
+#                         instead of letting pip compile Pillow from
+#                         source is what makes this installer fast.
+#                         Compiling Pillow on-device with clang is the
+#                         single slowest step otherwise (can take many
+#                         minutes on phone hardware).
 # ffmpeg               -> audio transcode + thumbnail embedding
 # git                  -> some pip deps are pulled/built from source
-# clang / make / pkg-config -> build chain for any package that compiles
-#                              from source instead of using a wheel
-# libjpeg-turbo / libpng / libwebp / zlib -> image headers Pillow needs
 # libffi / openssl     -> needed by cryptography-related pip deps
 #                         (e.g. pycryptodomex, used by yt-dlp)
 
@@ -123,13 +120,20 @@ ok "pip ready: $(pip --version)"
 
 # ---------------- Install the app + Python deps via pip ----------------
 step "Installing YTFLAC and Python dependencies via pip"
-quiet_run pip install --upgrade --force-reinstall \
+# No --force-reinstall on the shared deps: that flag makes pip rebuild and
+# redownload EVERYTHING on every run, even packages that already match.
+# Only ytflac itself (the thing that actually changes release to release)
+# is force-reinstalled; yt-dlp/mutagen/rich are left alone if already
+# satisfied, and Pillow is skipped entirely since python-pillow (pkg,
+# prebuilt) already provides it.
+quiet_run pip install --upgrade \
     "yt-dlp[default]" \
     mutagen \
     rich \
-    Pillow \
+    || fail "pip install failed (deps)"
+quiet_run pip install --upgrade --force-reinstall --no-deps \
     "ytflac @ $AppZip" \
-    || fail "pip install failed"
+    || fail "pip install failed (ytflac)"
 ok "YTFLAC installed"
 
 # ---------------- PATH check ----------------
