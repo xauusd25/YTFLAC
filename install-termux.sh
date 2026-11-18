@@ -48,6 +48,22 @@ ok()   { echo " ${G}${CHK} ${N}${G}$1${N}"; }
 warn() { echo " ${Y}${DOT} ${N}${Y}$1${N}"; }
 step() { echo; echo " ${C}${PLAY} ${N}${W}$1${N}"; }
 
+# Run a command quietly: swallow its stdout/stderr, but if it fails, show
+# what it printed (so real errors aren't hidden, just the normal noise).
+quiet_run() {
+    local log
+    log="$(mktemp)"
+    if "$@" >"$log" 2>&1; then
+        rm -f "$log"
+        return 0
+    else
+        echo " ${R}${CROSS} Command failed: $*${N}"
+        cat "$log"
+        rm -f "$log"
+        return 1
+    fi
+}
+
 # ---------------- Confirm we're actually on Termux ----------------
 if [ -z "$PREFIX" ] || [ "${PREFIX#*com.termux}" = "$PREFIX" ]; then
     warn "This doesn't look like a Termux environment (no \$PREFIX/com.termux detected)."
@@ -58,7 +74,7 @@ fi
 if [ "$Action" = "uninstall" ]; then
     banner
     step "Removing YTFLAC"
-    pip uninstall -y ytflac >/dev/null 2>&1 || true
+    quiet_run pip uninstall -y ytflac || true
     if command -v ytf >/dev/null 2>&1; then
         rm -f "$(command -v ytf)" 2>/dev/null || true
     fi
@@ -71,8 +87,8 @@ banner
 
 # ---------------- System packages via pkg ----------------
 step "Installing system dependencies via pkg"
-pkg update -y >/dev/null 2>&1 || warn "pkg update had warnings (continuing)"
-pkg install -y \
+quiet_run pkg update -y || warn "pkg update had warnings (continuing)"
+quiet_run pkg install -y \
     python \
     python-pip \
     ffmpeg \
@@ -98,13 +114,16 @@ ok "System dependencies ready"
 #                         (e.g. pycryptodomex, used by yt-dlp)
 
 # ---------------- pip itself ----------------
-step "Upgrading pip"
-pip install --upgrade pip || fail "Failed to upgrade pip"
+# NOTE: do NOT run `pip install --upgrade pip` on Termux — pip is managed
+# by the python-pip pkg package there, and self-upgrading it is blocked
+# ("Installing pip is forbidden, this will break the python-pip package").
+# Whatever pip version `pkg install python-pip` gave us above is used as-is.
+step "Checking pip"
 ok "pip ready: $(pip --version)"
 
 # ---------------- Install the app + Python deps via pip ----------------
 step "Installing YTFLAC and Python dependencies via pip"
-pip install --upgrade --force-reinstall \
+quiet_run pip install --upgrade --force-reinstall \
     "yt-dlp[default]" \
     mutagen \
     rich \
