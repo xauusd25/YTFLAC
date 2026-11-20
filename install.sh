@@ -1,107 +1,410 @@
 #!/usr/bin/env bash
-# =====================================================================
-#  YTFLAC Installer for macOS / Linux / Termux  (by XAU_USD_25)
-# =====================================================================
-#  Install / update:
-#      curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh | bash
+# ╔═══════════════════════════════════════════════════════╗
+# ║  YTFLAC - universal installer                         ║
+# ║  Termux • Linux • macOS (no Homebrew needed)          ║
+# ╚═══════════════════════════════════════════════════════╝
 #
-#  Uninstall:
-#      YTF_ACTION=uninstall bash -c "$(curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh)"
+#   Install / update :  curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh | bash
+#   Uninstall        :  curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh | bash -s -- uninstall
 #
-#  No admin rights needed. Python, ffmpeg and yt-dlp are installed for you
-#  via `uv` — ffmpeg is bundled by imageio-ffmpeg, so nothing extra is needed.
-# =====================================================================
+# Windows: use install.ps1 (PowerShell) instead.
 
 set -e
 
-Action="${YTF_ACTION:-install}"
-Repo="xauusd25/YTFLAC"
-AppZip="https://github.com/$Repo/archive/refs/heads/main.zip"
+ORIG_PATH="$PATH"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
-# ---------- Colors / helpers ----------
-if [ -t 1 ]; then
-    N=$'\e[0m'; R=$'\e[1;38;5;196m'; G=$'\e[1;38;5;82m'
-    Y=$'\e[1;38;5;220m'; C=$'\e[1;38;5;51m'; W=$'\e[1;38;5;255m'
-    GRAY=$'\e[38;5;244m'; LAV=$'\e[1;38;5;183m'; TEAL=$'\e[1;38;5;80m'
-else
-    N=''; R=''; G=''; Y=''; C=''; W=''; GRAY=''; LAV=''; TEAL=''
-fi
-CHK=$'\xe2\x9c\x94'; CROSS=$'\xe2\x9c\x98'; PLAY=$'\xe2\x96\xb6'; DOT=$'\xe2\x80\xa2'
+# ─────────────────────────── Settings ─────────────────────────
+REPO="xauusd25/YTFLAC"
+APP_ZIP="https://github.com/$REPO/archive/refs/heads/main.zip"
+PATH_MARK="# added by YTFLAC installer"
 
-banner() {
+ACTION="install"
+case "${1:-}" in
+    update|--update)                ACTION="update" ;;
+    uninstall|--uninstall|remove)   ACTION="uninstall" ;;
+esac
+
+# ─────────────────────────── Colors ───────────────────────────
+N=$'\033[0m'
+R=$'\033[1;38;5;196m'
+G=$'\033[1;38;5;82m'
+Y=$'\033[1;38;5;220m'
+C=$'\033[1;38;5;51m'
+W=$'\033[1;38;5;255m'
+GRAY=$'\033[38;5;244m'
+LAV=$'\033[1;38;5;183m'
+SHADOW=$'\033[0;38;5;99m'
+TEAL=$'\033[1;38;5;80m'
+GOLD=$'\033[1;38;5;178m'
+
+LOGO=(
+"██╗   ██╗████████╗███████╗██╗      █████╗  ██████╗"
+"╚██╗ ██╔╝╚══██╔══╝██╔════╝██║     ██╔══██╗██╔════╝"
+" ╚████╔╝    ██║   █████╗  ██║     ███████║██║     "
+"  ╚██╔╝     ██║   ██╔══╝  ██║     ██╔══██║██║     "
+"   ██║      ██║   ██║     ███████╗██║  ██║╚██████╗"
+"   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝ ╚═════╝"
+)
+
+FRAMES=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+
+TOTAL_STEPS=1
+STEP=0
+CUR_PID=""
+OS=""
+ARCH=""
+NOTES=()
+RC_FILE=""
+
+# ─────────────────────────── Helpers ──────────────────────────
+rule() {  # rule <width> <color>
+    local s="" i
+    for ((i = 0; i < $1; i++)); do s+="━"; done
+    printf '%s%s%s\n' "$2" "$s" "$N"
+}
+
+mini_bar() {  # mini_bar <done>
+    local s="" i
+    for ((i = 1; i <= TOTAL_STEPS; i++)); do
+        if [ "$i" -le "$1" ]; then s+="▰"; else s+="▱"; fi
+    done
+    printf '%s' "$s"
+}
+
+get_cols() {
+    # Works even when piped (curl | bash) and no tty on stdin/stdout
+    local c="" r
+    r=$({ stty size < /dev/tty; } 2>/dev/null) || r=""
+    set -- $r
+    c="${2:-}"
+    if [ -z "$c" ]; then c=$({ tput cols < /dev/tty; } 2>/dev/null || true); fi
+    if [ -z "$c" ]; then c="${COLUMNS:-}"; fi
+    case "$c" in ''|*[!0-9]*) c=80 ;; esac
+    echo "$c"
+}
+
+has_tty() { ( : < /dev/tty ) 2>/dev/null; }
+
+print_header() {
+    local cols pad line sub="FLAC Downloader Installer" brand="⚡ XAUUSD"
+    cols=$(get_cols)
+    clear
     echo
-    cat <<'YTFLAC_LOGO'
-   _  __ ___   __  ____  _______ ____
-  | |/ //   | / / / / / / / ___// __ \
-  |   // /| |/ / / / / / /\__ \/ / / /
- /   |/ ___ / /_/ / /_/ /___/ / /_/ /
-/_/|_/_/  |_\____/\____//____/_____/
-YTFLAC_LOGO
-    echo "              ${TEAL}FLAC Downloader Installer${N}"
+    if [ "$cols" -ge 52 ]; then
+        pad=$(( (cols - 51) / 2 ))
+        for line in "${LOGO[@]}"; do
+            printf '%*s%s%s%s\n' "$pad" '' "$SHADOW" \
+                "$(printf '%s' "$line" | sed "s/█/${LAV}█${SHADOW}/g")" "$N"
+        done
+        pad=$(( (cols - ${#sub}) / 2 ))
+        if [ "$pad" -lt 0 ]; then pad=0; fi
+        printf '%*s%s%s%s\n' "$pad" '' "$TEAL" "$sub" "$N"
+        pad=$(( (cols - ${#brand}) / 2 ))
+        if [ "$pad" -lt 0 ]; then pad=0; fi
+        printf '%*s%s%s%s\n' "$pad" '' "$GOLD" "$brand" "$N"
+    else
+        printf '%sYTFLAC%s %sInstaller%s  %s⚡ XAUUSD%s\n' "$LAV" "$N" "$TEAL" "$N" "$GOLD" "$N"
+    fi
     echo
 }
 
-fail() { echo " ${R}${CROSS} ${N}${R}$1${N}"; exit 1; }
-ok()   { echo " ${G}${CHK} ${N}${G}$1${N}"; }
-warn() { echo " ${Y}${DOT} ${N}${Y}$1${N}"; }
-step() { echo; echo " ${C}${PLAY} ${N}${W}$1${N}"; }
-
-# ---------------- Uninstall ----------------
-if [ "$Action" = "uninstall" ]; then
-    banner
-    step "Removing YTFLAC"
-    if command -v uv >/dev/null 2>&1; then
-        uv tool uninstall ytflac || true
-    fi
-    if command -v ytf >/dev/null 2>&1; then
-        rm -f "$(command -v ytf)" 2>/dev/null || true
-    fi
-    ok "YTFLAC removed"
+fail_box() {  # fail_box <title> <line>...
+    local title="$1" l
+    shift
+    printf ' %s┃ ⚠ %s%s\n' "$Y" "$title" "$N"
+    printf ' %s┃%s\n' "$Y" "$N"
+    for l in "$@"; do printf ' %s┃%s %s\n' "$Y" "$N" "$l"; done
     echo
-    exit 0
-fi
+    exit 1
+}
 
-banner
-
-# ---------------- Check / install uv ----------------
-step "Checking for uv (Python package manager)"
-if ! command -v uv >/dev/null 2>&1; then
-    warn "uv not found — installing it"
-    if command -v curl >/dev/null 2>&1; then
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-    elif command -v wget >/dev/null 2>&1; then
-        wget -qO- https://astral.sh/uv/install.sh | sh
-    else
-        fail "Need curl or wget to install uv"
+cleanup() {
+    tput cnorm 2>/dev/null || true
+    if [ -n "$CUR_PID" ] && kill -0 "$CUR_PID" 2>/dev/null; then
+        kill "$CUR_PID" 2>/dev/null || true
     fi
-    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    rm -f "$LOG"
+}
+trap cleanup EXIT
+trap 'echo; echo; echo " ${Y}⚠ Installation cancelled${N}"; exit 130' INT TERM
+
+run_step() {
+    STEP=$((STEP + 1))
+    local msg="$1" cmd="$2" start=$SECONDS i=0 rc=0 secs
+
+    : > "$LOG"
+    bash -c "$cmd" > "$LOG" 2>&1 < /dev/null &
+    CUR_PID=$!
+
+    while kill -0 "$CUR_PID" 2>/dev/null; do
+        printf '\r\033[K %s%s%s %s%s%s %s%s%s' \
+            "$C" "${FRAMES[$((i % 10))]}" "$N" \
+            "$GRAY" "$(mini_bar $((STEP - 1)))" "$N" \
+            "$W" "$msg" "$N"
+        i=$((i + 1))
+        sleep 0.1
+    done
+
+    wait "$CUR_PID" || rc=$?
+    CUR_PID=""
+    secs=$((SECONDS - start))
+
+    if [ "$rc" -eq 0 ]; then
+        printf '\r\033[K %s✔%s %s%s%s %s %s%ss%s\n' \
+            "$G" "$N" "$G" "$(mini_bar "$STEP")" "$N" "$msg" "$GRAY" "$secs" "$N"
+    else
+        printf '\r\033[K %s✘%s %s%s%s %s%s%s\n' \
+            "$R" "$N" "$R" "$(mini_bar $((STEP - 1)))" "$N" "$R" "$msg" "$N"
+        echo
+        printf ' %s┏━ Error details ━━━━━━━━━━━━━━%s\n' "$R" "$N"
+        tail -n 15 "$LOG" | while IFS= read -r l; do
+            printf ' %s┃%s %s\n' "$R" "$N" "$l"
+        done
+        printf ' %s┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$R" "$N"
+        cp "$LOG" "$HOME/ytflac_install_error.log" 2>/dev/null || true
+        echo
+        printf ' %sFull log saved:%s %s~/ytflac_install_error.log%s\n\n' "$Y" "$N" "$W" "$N"
+        exit 1
+    fi
+}
+
+done_line() {  # done_line <message>   (a finished step that ran in the foreground)
+    STEP=$((STEP + 1))
+    printf ' %s✔%s %s%s%s %s\n' "$G" "$N" "$G" "$(mini_bar "$STEP")" "$N" "$1"
+}
+
+skip_line() {  # skip_line <message>
+    STEP=$((STEP + 1))
+    printf ' %s⚠%s %s%s%s %s\n' "$Y" "$N" "$Y" "$(mini_bar "$STEP")" "$N" "$1"
+}
+
+# ───────────────────── System detection ───────────────────────
+detect_os() {
+    if [[ "${PREFIX:-}" == *com.termux* ]]; then
+        OS="termux"
+    else
+        case "$(uname -s)" in
+            Darwin) OS="macos" ;;
+            Linux)  OS="linux" ;;
+            *)      OS="" ;;
+        esac
+    fi
+    case "$(uname -m)" in
+        x86_64|amd64)  ARCH="x64" ;;
+        arm64|aarch64) ARCH="arm64" ;;
+        *)             ARCH="" ;;
+    esac
+}
+
+installed_path() {
+    PATH="$ORIG_PATH:$HOME/.local/bin" command -v ytf 2>/dev/null || true
+}
+
+ask_action() {
+    local found choice=1
+    found="$(installed_path)"
+    if [ -z "$found" ] || [ "$ACTION" != "install" ]; then
+        return 0
+    fi
+    printf ' %s●%s YTFLAC is already installed at %s%s%s\n' "$GRAY" "$N" "$W" "$found" "$N"
+    printf ' Choose an action: %s[1]%s Reinstall/Update  %s[2]%s Uninstall  %s[3]%s Exit: ' \
+        "$C" "$N" "$C" "$N" "$C" "$N"
+    if has_tty; then
+        tput cnorm 2>/dev/null || true
+        read -r choice < /dev/tty || choice=1
+        tput civis 2>/dev/null || true
+    else
+        echo "1"
+    fi
+    case "$choice" in
+        2) ACTION="uninstall" ;;
+        3) echo; exit 0 ;;
+        *) ACTION="update"; echo ;;
+    esac
+}
+
+# ───────────────── Putting `ytf` on the PATH (Linux / macOS) ─────────────
+add_path_line() {  # add_path_line <dir>
+    local dir="$1" rc
+    case "${SHELL##*/}" in
+        zsh)  rc="$HOME/.zshrc" ;;
+        bash) if [ "$OS" = "macos" ]; then rc="$HOME/.bash_profile"; else rc="$HOME/.bashrc"; fi ;;
+        fish) NOTES+=("fish shell: run  fish_add_path $dir") ; return 0 ;;
+        *)    rc="$HOME/.profile" ;;
+    esac
+    if ! grep -qsF "$PATH_MARK" "$rc"; then
+        printf '\n%s\nexport PATH="%s:$PATH"\n' "$PATH_MARK" "$dir" >> "$rc"
+    fi
+    RC_FILE="$rc"
+}
+
+link_command() {
+    local src n linked=0
+    src="$(uv tool dir --bin 2>/dev/null || true)"
+    if [ -z "$src" ]; then src="$HOME/.local/bin"; fi
+
+    if PATH="$ORIG_PATH" command -v ytf >/dev/null 2>&1; then
+        done_line "Command ready: ytf"
+        return 0
+    fi
+
+    if [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
+        for n in ytf ytflac; do ln -sf "$src/$n" "/usr/local/bin/$n"; done
+        linked=1
+    elif command -v sudo >/dev/null 2>&1; then
+        printf '\r\033[K %s▸%s Adding the command to /usr/local/bin %s(may ask for your password)%s\n' \
+            "$Y" "$N" "$GRAY" "$N"
+        tput cnorm 2>/dev/null || true
+        if sudo mkdir -p /usr/local/bin \
+            && sudo ln -sf "$src/ytf" /usr/local/bin/ytf \
+            && sudo ln -sf "$src/ytflac" /usr/local/bin/ytflac; then
+            linked=1
+        fi
+        tput civis 2>/dev/null || true
+    fi
+
+    if [ "$linked" -eq 1 ]; then
+        done_line "Command added: ytf"
+    else
+        add_path_line "$src"
+        done_line "Command added to your PATH (open a new terminal)"
+    fi
+}
+
+remove_links() {
+    local n target
+    for n in ytf ytflac; do
+        target="$(readlink "/usr/local/bin/$n" 2>/dev/null || true)"
+        case "$target" in
+            */.local/bin/"$n"|*/uv/tools/*|*ytflac*)
+                if [ -w /usr/local/bin ]; then
+                    rm -f "/usr/local/bin/$n"
+                elif command -v sudo >/dev/null 2>&1; then
+                    tput cnorm 2>/dev/null || true
+                    sudo rm -f "/usr/local/bin/$n" || true
+                    tput civis 2>/dev/null || true
+                fi
+                ;;
+        esac
+    done
+    local rc tmp line skip
+    for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
+        if [ -f "$rc" ] && grep -qF "$PATH_MARK" "$rc"; then
+            tmp="$(mktemp)"
+            skip=0
+            while IFS= read -r line || [ -n "$line" ]; do
+                if [ "$line" = "$PATH_MARK" ]; then skip=1; continue; fi
+                if [ "$skip" -eq 1 ]; then skip=0; continue; fi
+                printf '%s\n' "$line"
+            done < "$rc" > "$tmp"
+            cat "$tmp" > "$rc"
+            rm -f "$tmp"
+        fi
+    done
+}
+
+# ──────────────────────────── Actions ────────────────────────────
+do_install() {
+    if [ "$OS" = "termux" ]; then
+        TOTAL_STEPS=3
+        run_step "Installing system dependencies" \
+            "yes | pkg update && yes | pkg install python python-pip python-pillow ffmpeg git libffi openssl"
+        run_step "Installing Python dependencies" \
+            "pip install --upgrade 'yt-dlp[default]' mutagen rich || pip install --upgrade --break-system-packages 'yt-dlp[default]' mutagen rich"
+        run_step "Installing YTFLAC" \
+            "{ pip install --upgrade --force-reinstall --no-deps \"$APP_ZIP\"; } || { pip install --upgrade --force-reinstall --no-deps --break-system-packages \"$APP_ZIP\"; }"
+        return 0
+    fi
+
+    TOTAL_STEPS=3
+    run_step "Installing uv (Python manager)" \
+        "if command -v uv >/dev/null 2>&1; then uv --version; else curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh; fi"
+
+    run_step "Installing YTFLAC" \
+        "uv tool install --force --reinstall --python 3.12 --with 'yt-dlp[default]' --with imageio-ffmpeg --with pillow 'ytflac @ $APP_ZIP'"
+
+    link_command
+}
+
+do_uninstall() {
+    if [ "$OS" = "termux" ]; then
+        TOTAL_STEPS=1
+        run_step "Removing YTFLAC" "pip uninstall -y ytflac"
+        return 0
+    fi
+    TOTAL_STEPS=2
+    run_step "Removing YTFLAC" \
+        "if command -v uv >/dev/null 2>&1; then uv tool uninstall ytflac; fi"
+    remove_links
+    done_line "Removed command links"
+}
+
+finish_install() {
+    local cols rw
+    cols=$(get_cols)
+    rw=45
+    if [ "$cols" -lt "$rw" ]; then rw="$cols"; fi
+    echo
+    rule "$rw" "$G"
+    printf ' %s✔ Installation completed successfully%s  %s(%ss)%s\n' "$G" "$N" "$GRAY" "$SECONDS" "$N"
+    rule "$rw" "$G"
+    echo
+    printf ' %s▶ Start it by typing:%s\n' "$Y" "$N"
+    printf '   %sytf%s\n\n' "$C" "$N"
+    printf ' %sAlso available:%s ytflac · ytf --check · ytf --help\n' "$GRAY" "$N"
+
+    if [ -n "$RC_FILE" ]; then
+        printf '\n %s▸%s Open a new terminal first (or run: %ssource %s%s)\n' "$Y" "$N" "$C" "$RC_FILE" "$N"
+    fi
+    if [ "$OS" = "termux" ] && [ ! -d "$HOME/storage" ]; then
+        printf '\n %s▸%s Tip: run %stermux-setup-storage%s to save into your phone'"'"'s Downloads folder\n' \
+            "$Y" "$N" "$C" "$N"
+    fi
+    local note
+    for note in "${NOTES[@]}"; do
+        printf '\n %s▸%s %s\n' "$Y" "$N" "$note"
+    done
+    echo
+}
+
+finish_uninstall() {
+    echo
+    rule 45 "$G"
+    printf ' %s✔ YTFLAC removed%s\n' "$G" "$N"
+    rule 45 "$G"
+    echo
+}
+
+# ──────────────────────────── Start ───────────────────────────
+detect_os
+
+if [ "$OS" = "termux" ]; then
+    LOG_DIR="${PREFIX}/tmp"
+else
+    LOG_DIR="${TMPDIR:-/tmp}"
 fi
-ok "uv ready: $(uv --version 2>/dev/null)"
+LOG="$(mktemp "${LOG_DIR%/}/ytflac_install.XXXXXX")"
 
-# ---------------- Install the app from the release zip ----------------
-step "Downloading & installing YTFLAC from source zip"
-uv tool install --force --reinstall \
-    --python 3.12 \
-    --with 'yt-dlp[default]' \
-    --with imageio-ffmpeg \
-    --with pillow \
-    "ytflac @ $AppZip"
+tput civis 2>/dev/null || true
+print_header
 
-# Add uv bin dir to PATH if missing
-UVBIN="$(uv tool dir --bin 2>/dev/null || echo "$HOME/.local/bin")"
-case ":$PATH:" in
-    *":$UVBIN:"*) ;;
-    *) export PATH="$UVBIN:$PATH" ;;
-esac
-ok "Command added: ytf"
+if [ -z "$OS" ]; then
+    fail_box "Unsupported system" \
+        "This installer supports Termux, Linux and macOS." \
+        "On Windows, use PowerShell and run install.ps1 instead."
+fi
 
-echo
-echo " ${G}══════════════════════════════════════════════${N}"
-echo " ${G}${CHK} Installation completed successfully${N}"
-echo " ${G}══════════════════════════════════════════════${N}"
-echo
-echo " ${Y}${PLAY} Start it by typing:${N}"
-echo "    ${C}ytf${N}"
-echo
-echo " ${GRAY}Also available:${N} ytflac · ytf --check · ytf --help"
-echo
+if [ "$OS" != "termux" ] && ! command -v curl >/dev/null 2>&1; then
+    fail_box "curl is required" "Install curl with your package manager, then run this installer again."
+fi
+
+ask_action
+
+if [ "$ACTION" = "uninstall" ]; then
+    do_uninstall
+    finish_uninstall
+else
+    do_install
+    finish_install
+fi
