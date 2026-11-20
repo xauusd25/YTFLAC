@@ -48,15 +48,9 @@ curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh | b
 
 ### Uninstall
 
-```bash
-# macOS / Linux / Termux
-YTF_ACTION=uninstall bash -c "$(curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh)"
-```
+##### Same Install Script
 
-```powershell
-# Windows
-$env:YTF_ACTION = 'uninstall'; irm https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.ps1 | iex
-```
+Just run the install script & choose **Uninstall**!
 
 ---
 
