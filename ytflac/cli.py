@@ -12,18 +12,20 @@ from .paths import download_dir
 
 console = Console()
 
-# Big italic-style ASCII-art logo.
+# Big block-style ASCII-art logo (matches the installer banner).
 LOGO = r"""
-   _  __ ___   __  ____  _______ ____
-  | |/ //   | / / / / / / / ___// __ \
-  |   // /| |/ / / / / / /\__ \/ / / /
- /   |/ ___ / /_/ / /_/ /___/ / /_/ /
-/_/|_/_/  |_\____/\____//____/_____/
+██╗   ██╗████████╗███████╗██╗      █████╗  ██████╗
+╚██╗ ██╔╝╚══██╔══╝██╔════╝██║     ██╔══██╗██╔════╝
+ ╚████╔╝    ██║   █████╗  ██║     ███████║██║     
+  ╚██╔╝     ██║   ██╔══╝  ██║     ██╔══██║██║     
+   ██║      ██║   ██║     ███████╗██║  ██║╚██████╗
+   ╚═╝      ╚═╝   ╚═╝     ╚══════╝╚═╝  ╚═╝ ╚═════╝
 """
 
 
 def print_banner():
     console.print(f"[bold cyan]{LOGO}[/bold cyan]")
+    console.print("[bold yellow]⚡ XAUUSD[/bold yellow]", justify="center")
     console.print(
         Panel(
             f"[bold cyan]YTFLAC v{__version__}[/bold cyan] · [bold magenta]DEV: {DEV}[/bold magenta]\n"
