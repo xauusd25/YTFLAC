@@ -43,7 +43,7 @@ irm https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.ps1 | iex
 ```bash
 pkg update && yes | pkg upgrade
 termux-setup-storage
-curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install-termux.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xauusd25/YTFLAC/main/install.sh | bash
 ```
 
 ### Uninstall
